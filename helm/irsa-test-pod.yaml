@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: irsa-test
+  namespace: airflow
+spec:
+  serviceAccountName: airflow-scheduler
+  restartPolicy: Never
+  containers:
+  - name: aws-cli
+    image: amazon/aws-cli
+    command: ["aws", "s3", "ls", "s3://retail-analytics-lake-495249387077/bronze/"]

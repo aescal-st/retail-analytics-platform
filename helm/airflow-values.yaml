@@ -1,0 +1,17 @@
+executor: KubernetesExecutor
+
+# Chart 1.22.0 uses per-component serviceAccount blocks
+# (there is no top-level `serviceAccounts` key in this chart version)
+scheduler:
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: "arn:aws:iam::495249387077:role/retail-analytics-airflow"
+apiServer:
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: "arn:aws:iam::495249387077:role/retail-analytics-airflow"
+
+postgresql:
+  primary:
+    persistence:
+      enabled: false
