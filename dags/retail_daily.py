@@ -27,10 +27,11 @@ with DAG(
 ) as dag:
 
     create_schemas = SQLExecuteQueryOperator(
-        task_id="create_schemas",
-        conn_id=REDSHIFT_CONN_ID,
-        sql="CREATE SCHEMA IF NOT EXISTS raw; CREATE SCHEMA IF NOT EXISTS analytics;",
-    )
+    task_id="create_schemas",
+    conn_id=REDSHIFT_CONN_ID,
+    sql="CREATE SCHEMA IF NOT EXISTS raw; CREATE SCHEMA IF NOT EXISTS analytics;",
+)
+
 
     create_staging_tables = SQLExecuteQueryOperator(
         task_id="create_staging_tables",
