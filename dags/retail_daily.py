@@ -1,5 +1,7 @@
 """Daily retail pipeline: S3 bronze -> Redshift staging -> dbt star schema."""
 from datetime import datetime, timedelta
+from kubernetes.client import models as k8s
+
 
 from airflow import DAG
 from airflow.hooks.base import BaseHook
@@ -65,22 +67,40 @@ with DAG(
         """,
     )
 
-    dbt_build = KubernetesPodOperator(
-        task_id="dbt_build",
-        namespace="airflow",
-        image="ghcr.io/dbt-labs/dbt-redshift:1.9.latest",
-        cmds=["dbt", "build",
-              "--project-dir", "/opt/airflow/dags/dbt",
-              "--profiles-dir", "/opt/airflow/dags/dbt"],
-        env_vars={
-            "REDSHIFT_HOST": _rs.host,
-            "REDSHIFT_USER": _rs.login,
-            "REDSHIFT_PASSWORD": _rs.password or "",
-            "REDSHIFT_DBNAME": _rs.schema or "retail",
-        },
-        get_logs=True,
-        is_delete_operator_pod=True,
-    )
+    dbt_repo_volume = k8s.V1Volume(
+    name="dbt-repo", empty_dir=k8s.V1EmptyDirVolumeSource()
+)
+dbt_repo_mount = k8s.V1VolumeMount(name="dbt-repo", mount_path="/dbt-repo")
+
+dbt_build = KubernetesPodOperator(
+    task_id="dbt_build",
+    namespace="airflow",
+    image="ghcr.io/dbt-labs/dbt-redshift:1.9.latest",
+    init_containers=[
+        k8s.V1Container(
+            name="git-clone",
+            image="alpine/git:latest",
+            command=["git", "clone", "--depth", "1",
+                     "https://github.com/aescal-st/retail-analytics-platform.git",
+                     "/dbt-repo"],
+            volume_mounts=[dbt_repo_mount],
+        )
+    ],
+    cmds=["dbt", "build",
+          "--project-dir", "/dbt-repo/dbt",
+          "--profiles-dir", "/dbt-repo/dbt"],
+    env_vars={
+        "REDSHIFT_HOST": _rs.host,
+        "REDSHIFT_USER": _rs.login,
+        "REDSHIFT_PASSWORD": _rs.password or "",
+        "REDSHIFT_DBNAME": _rs.schema or "retail",
+    },
+    volumes=[dbt_repo_volume],
+    volume_mounts=[dbt_repo_mount],
+    get_logs=True,
+    is_delete_operator_pod=True,
+)
+
 
     data_quality_checks = SQLExecuteQueryOperator(
         task_id="data_quality_checks",
