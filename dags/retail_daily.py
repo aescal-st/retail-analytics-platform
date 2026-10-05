@@ -32,7 +32,7 @@ with DAG(
     task_id="create_schemas",
     conn_id=REDSHIFT_CONN_ID,
     sql="CREATE SCHEMA IF NOT EXISTS staging; CREATE SCHEMA IF NOT EXISTS analytics;",
-)
+    )
 
 
     create_staging_tables = SQLExecuteQueryOperator(
@@ -68,11 +68,11 @@ with DAG(
     )
 
     dbt_repo_volume = k8s.V1Volume(
-    name="dbt-repo", empty_dir=k8s.V1EmptyDirVolumeSource()
-)
-dbt_repo_mount = k8s.V1VolumeMount(name="dbt-repo", mount_path="/dbt-repo")
+        name="dbt-repo", empty_dir=k8s.V1EmptyDirVolumeSource()
+    )
+    dbt_repo_mount = k8s.V1VolumeMount(name="dbt-repo", mount_path="/dbt-repo")
 
-dbt_build = KubernetesPodOperator(
+    dbt_build = KubernetesPodOperator(
     task_id="dbt_build",
     namespace="airflow",
     image="ghcr.io/dbt-labs/dbt-redshift:1.9.latest",
@@ -99,7 +99,7 @@ dbt_build = KubernetesPodOperator(
     volume_mounts=[dbt_repo_mount],
     get_logs=True,
     is_delete_operator_pod=True,
-)
+    )
 
 
     data_quality_checks = SQLExecuteQueryOperator(
