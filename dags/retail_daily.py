@@ -7,6 +7,8 @@ from airflow import DAG
 from airflow.hooks.base import BaseHook
 from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
 from airflow.providers.cncf.kubernetes.operators.pod import KubernetesPodOperator
+from airflow.decorators import task
+from airflow.providers.postgres.hooks.postgres import PostgresHook
 
 REDSHIFT_CONN_ID = "redshift_default"
 BUCKET = "retail-analytics-lake-495249387077"
@@ -102,16 +104,17 @@ with DAG(
     )
 
 
-    data_quality_checks = SQLExecuteQueryOperator(
-        task_id="data_quality_checks",
-        conn_id=REDSHIFT_CONN_ID,
-        sql="""
-            SELECT 1 / COUNT(*) AS nonzero_fact_check FROM analytics.fact_sales;
-            SELECT CAST('null keys found in fact_sales' AS INT)
-            FROM analytics.fact_sales
-            WHERE customer_id IS NULL OR product_id IS NULL OR order_date IS NULL
-            LIMIT 1;
-        """,
-    )
+    @task
+    def data_quality_checks():
+        """Fail loudly if marts are empty or have null keys."""
+        hook = PostgresHook(postgres_conn_id=REDSHIFT_CONN_ID)
+        fact_rows = hook.get_first("SELECT COUNT(*) FROM analytics.fact_sales")[0]
+        assert fact_rows > 0, "fact_sales is empty"
+        null_keys = hook.get_first(
+            "SELECT COUNT(*) FROM analytics.fact_sales "
+            "WHERE customer_id IS NULL OR product_id IS NULL OR order_date IS NULL"
+        )[0]
+        assert null_keys == 0, f"{null_keys} null keys in fact_sales"
+        print(f"data quality passed: {fact_rows} fact rows, 0 null keys")
 
-    create_schemas >> create_staging_tables >> copy_bronze_to_staging >> dbt_build >> data_quality_checks
+    create_schemas >> create_staging_tables >> copy_bronze_to_staging >> dbt_build >> data_quality_checks()
