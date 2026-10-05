@@ -15,3 +15,15 @@ postgresql:
   primary:
     persistence:
       enabled: false
+dags:
+  gitSync:
+    enabled: true
+    repo: https://github.com/aescal-st/retail-analytics-platform.git
+    branch: main
+    subPath: ""
+    depth: 1
+    
+config:
+  kubernetes_executor:
+    delete_worker_pods: "False"
+

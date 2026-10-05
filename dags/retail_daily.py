@@ -36,13 +36,13 @@ with DAG(
         task_id="create_staging_tables",
         conn_id=REDSHIFT_CONN_ID,
         sql="""
-            CREATE TABLE IF NOT EXISTS raw.raw_orders (
+            CREATE TABLE IF NOT EXISTS staging.raw_orders (
                 order_id INT, customer_id INT, product_id INT, quantity INT,
                 unit_price DECIMAL(10,2), order_date DATE, status VARCHAR(20));
-            CREATE TABLE IF NOT EXISTS raw.raw_customers (
+            CREATE TABLE IF NOT EXISTS staging.raw_customers (
                 customer_id INT, first_name VARCHAR(50), last_name VARCHAR(50),
                 email VARCHAR(100), city VARCHAR(50), state VARCHAR(10), signup_date DATE);
-            CREATE TABLE IF NOT EXISTS raw.raw_products (
+            CREATE TABLE IF NOT EXISTS staging.raw_products (
                 product_id INT, product_name VARCHAR(100),
                 category VARCHAR(50), unit_price DECIMAL(10,2));
         """,
@@ -52,14 +52,14 @@ with DAG(
         task_id="copy_bronze_to_staging",
         conn_id=REDSHIFT_CONN_ID,
         sql=f"""
-            TRUNCATE raw.raw_orders;
-            COPY raw.raw_orders FROM 's3://{BUCKET}/bronze/orders.csv'
+            TRUNCATE staging.raw_orders;
+            COPY staging.raw_orders FROM 's3://{BUCKET}/bronze/orders.csv'
             IAM_ROLE '{REDSHIFT_S3_ROLE}' CSV IGNOREHEADER 1;
-            TRUNCATE raw.raw_customers;
-            COPY raw.raw_customers FROM 's3://{BUCKET}/bronze/customers.csv'
+            TRUNCATE staging.raw_customers;
+            COPY staging.raw_customers FROM 's3://{BUCKET}/bronze/customers.csv'
             IAM_ROLE '{REDSHIFT_S3_ROLE}' CSV IGNOREHEADER 1;
-            TRUNCATE raw.raw_products;
-            COPY raw.raw_products FROM 's3://{BUCKET}/bronze/products.csv'
+            TRUNCATE staging.raw_products;
+            COPY staging.raw_products FROM 's3://{BUCKET}/bronze/products.csv'
             IAM_ROLE '{REDSHIFT_S3_ROLE}' CSV IGNOREHEADER 1;
         """,
     )
